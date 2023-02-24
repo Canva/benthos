@@ -231,7 +231,7 @@ func (e *Executor) mapPart(appendTo *message.Part, index int, reference Message)
 		case []byte:
 			newPart.SetBytes(t)
 		default:
-			newPart.SetStructuredMut(newValue)
+			newPart.SetBytes(reference.Get(index).AsBytes())
 		}
 	}
 	return newPart, nil
