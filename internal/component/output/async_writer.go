@@ -212,12 +212,16 @@ func (w *AsyncWriter) loop() {
 		for {
 			var ts message.Transaction
 			var open bool
+			w.log.Tracef("I have entered the transaction here\n")
 			select {
 			case ts, open = <-w.transactions:
 				if !open {
+					w.log.Tracef("Transaction channel is not open. Returning..\n")
 					return
 				}
+				w.log.Tracef("Safely continue and transfer the transactions\n")
 			case <-w.shutSig.CloseAtLeisureChan():
+				w.log.Tracef("Shutdown at leisure has been triggered. Returning\n")
 				return
 			}
 
