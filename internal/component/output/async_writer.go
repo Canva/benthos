@@ -212,7 +212,7 @@ func (w *AsyncWriter) loop() {
 		for {
 			var ts message.Transaction
 			var open bool
-			w.log.Tracef("I have entered the transaction here\n")
+			//w.log.Tracef("I have entered the transaction here\n")
 			select {
 			case ts, open = <-w.transactions:
 				if !open {
