@@ -3,6 +3,7 @@ package batcher
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/benthosdev/benthos/v4/internal/batch/policy"
@@ -64,9 +65,23 @@ func (m *Impl) loop() {
 	closeNowCtx, cnDone := m.shutSig.CloseNowCtx(context.Background())
 	defer cnDone()
 
-	defer func() {
-		close(m.messagesOut)
+	ackInterruptChan := make(chan struct{})
+	var ackPending int64
 
+	defer func() {
+		// Wait for pending acks to be resolved, or forceful termination
+	ackWaitLoop:
+		for atomic.LoadInt64(&ackPending) > 0 {
+			select {
+			case <-ackInterruptChan:
+			case <-time.After(time.Millisecond * 100):
+				// Just incase an interrupt doesn't arrive.
+			case <-m.shutSig.CloseNowChan():
+				break ackWaitLoop
+			}
+		}
+
+		close(m.messagesOut)
 		m.child.TriggerCloseNow()
 		_ = m.child.WaitForClose(context.Background())
 
@@ -96,13 +111,15 @@ func (m *Impl) loop() {
 					return
 				}
 
+				// TODO (SASAN): Remove this once tested. We had to comment this out to avoid waiting
+				// for batching period once recieving a shutdown signal.
 				// If we're waiting for a timed batch then we will respect it.
-				if nextTimedBatchChan != nil {
-					select {
-					case <-nextTimedBatchChan:
-					case <-m.shutSig.CloseAtLeisureChan():
-					}
-				}
+				// if nextTimedBatchChan != nil {
+				// 	select {
+				// 	case <-nextTimedBatchChan:
+				// 	case <-m.shutSig.CloseAtLeisureChan():
+				// 	}
+				// }
 			} else {
 				trackedTran := transaction.NewTracked(tran.Payload, tran.Ack)
 				_ = trackedTran.Message().Iter(func(i int, p *message.Part) error {
@@ -136,7 +153,16 @@ func (m *Impl) loop() {
 			return
 		}
 
+		_ = atomic.AddInt64(&ackPending, 1)
+
 		go func(rChan chan error, upstreamTrans []*transaction.Tracked) {
+			defer func() {
+				_ = atomic.AddInt64(&ackPending, -1)
+				select {
+				case ackInterruptChan <- struct{}{}:
+				default:
+				}
+			}()
 			select {
 			case <-m.shutSig.CloseAtLeisureChan():
 				return
