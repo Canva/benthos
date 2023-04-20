@@ -369,6 +369,10 @@ func (o *switchOutput) loop() {
 	var ackPending int64
 
 	defer func() {
+		for _, tChan := range o.outputTSChans {
+			close(tChan)
+		}
+
 		// Wait for pending acks to be resolved, or forceful termination
 	ackWaitLoop:
 		for atomic.LoadInt64(&ackPending) > 0 {
@@ -380,9 +384,7 @@ func (o *switchOutput) loop() {
 				break ackWaitLoop
 			}
 		}
-		for _, tChan := range o.outputTSChans {
-			close(tChan)
-		}
+
 		for _, output := range o.outputs {
 			output.TriggerCloseNow()
 		}
