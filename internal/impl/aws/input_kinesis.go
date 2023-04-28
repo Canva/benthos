@@ -378,7 +378,6 @@ func (k *kinesisReader) runConsumer(wg *sync.WaitGroup, streamID, shardID, start
 			recordBatcher.Close(context.Background(), state == awsKinesisConsumerFinished)
 			boff.Reset()
 			k.boffPool.Put(boff)
-
 			reason := ""
 			switch state {
 			case awsKinesisConsumerFinished:
@@ -413,6 +412,12 @@ func (k *kinesisReader) runConsumer(wg *sync.WaitGroup, streamID, shardID, start
 			}
 		}
 
+		kinesisReadTime := time.Now()
+		metricKVectorReadTime := k.mgr.Metrics().GetTimerVec("kinesis_reader_time", "stream", "shardId")
+		metricKReadTime := metricKVectorReadTime.With(streamID, shardID)
+		metricKVectorReadCount := k.mgr.Metrics().GetCounterVec("kinesis_reader_count", "stream", "shardId")
+		metricKReadCount := metricKVectorReadCount.With(streamID, shardID)
+
 		for {
 			var err error
 			if state == awsKinesisConsumerConsuming && len(pending) == 0 && nextPullChan == unblockedChan {
@@ -435,6 +440,9 @@ func (k *kinesisReader) runConsumer(wg *sync.WaitGroup, streamID, shardID, start
 				} else if len(pending) == 0 {
 					nextPullChan = time.After(boff.NextBackOff())
 				} else {
+					metricKReadTime.Timing(time.Since(kinesisReadTime).Nanoseconds())
+					kinesisReadTime = time.Now()
+					metricKReadCount.Incr(int64(len(pending)))
 					boff.Reset()
 					nextPullChan = blockedChan
 				}
