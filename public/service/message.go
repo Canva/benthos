@@ -23,6 +23,7 @@ type MessageBatchHandlerFunc func(context.Context, MessageBatch) error
 // Message represents a single discrete message passing through a Benthos
 // pipeline. It is safe to mutate the message via Set methods, but the
 // underlying byte data should not be edited directly.
+// The Lock can be used to safely work with a Message concurrently in go routines
 type Message struct {
 	Lock *sync.RWMutex
 	part *message.Part
