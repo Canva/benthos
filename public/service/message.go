@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 
 	"github.com/benthosdev/benthos/v4/internal/bloblang/mapping"
 	"github.com/benthosdev/benthos/v4/internal/bloblang/query"
@@ -22,7 +23,9 @@ type MessageBatchHandlerFunc func(context.Context, MessageBatch) error
 // Message represents a single discrete message passing through a Benthos
 // pipeline. It is safe to mutate the message via Set methods, but the
 // underlying byte data should not be edited directly.
+// The Lock can be used to safely work with a Message concurrently in go routines
 type Message struct {
+	Lock *sync.RWMutex
 	part *message.Part
 }
 
@@ -61,11 +64,12 @@ func (b MessageBatch) DeepCopy() MessageBatch {
 func NewMessage(content []byte) *Message {
 	return &Message{
 		part: message.NewPart(content),
+		Lock: &sync.RWMutex{},
 	}
 }
 
 func newMessageFromPart(part *message.Part) *Message {
-	return &Message{part}
+	return &Message{part: part, Lock: &sync.RWMutex{}}
 }
 
 // Copy creates a shallow copy of a message that is safe to mutate with Set
@@ -74,6 +78,7 @@ func newMessageFromPart(part *message.Part) *Message {
 func (m *Message) Copy() *Message {
 	return &Message{
 		part: m.part.ShallowCopy(),
+		Lock: &sync.RWMutex{},
 	}
 }
 
@@ -88,6 +93,7 @@ func (m *Message) Copy() *Message {
 func (m *Message) DeepCopy() *Message {
 	return &Message{
 		part: m.part.DeepCopy(),
+		Lock: &sync.RWMutex{},
 	}
 }
 
@@ -101,6 +107,7 @@ func (m *Message) Context() context.Context {
 func (m *Message) WithContext(ctx context.Context) *Message {
 	return &Message{
 		part: message.WithContext(ctx, m.part),
+		Lock: &sync.RWMutex{},
 	}
 }
 
