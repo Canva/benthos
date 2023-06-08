@@ -750,8 +750,7 @@ func (k *kinesisReader) stealShard(wg *sync.WaitGroup, streamID string, clientCl
 	return errShardNotStolen
 }
 
-//------------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------------
 // Connect establishes a kafkaReader connection.
 func (k *kinesisReader) Connect(ctx context.Context) error {
 	k.cMut.Lock()
