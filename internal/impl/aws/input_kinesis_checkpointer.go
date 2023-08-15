@@ -283,6 +283,8 @@ func (k *awsKinesisCheckpointer) Claim(ctx context.Context, streamID, shardID, f
 	// This allows the victim client to update the checkpoint with the final
 	// sequence as it yields the shard.
 	if len(fromClientID) > 0 && time.Since(currentLease) < k.leaseDuration {
+		// The maximum duration we'll wait for is the estimated next checkpoint time plus a grace period of
+		// one second.
 		waitFor := k.leaseDuration - time.Since(currentLease) + time.Second
 		timer := time.NewTimer(waitFor)
 	FOR_LOOP:
@@ -296,8 +298,8 @@ func (k *awsKinesisCheckpointer) Claim(ctx context.Context, streamID, shardID, f
 				break
 			}
 
-			// Wait for the estimated next checkpoint time plus a grace period of
-			// one second.
+			// If the shard has not been checkpointed yet, check again in 30 seconds, or just break and
+			// steal the shard when the max waitFor timer expires
 			select {
 			case <-time.After(time.Second * 30):
 			case <-timer.C:
