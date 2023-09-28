@@ -559,6 +559,9 @@ func (k *kinesisReader) runBalancedShards() {
 		for _, streamID := range k.balancedStreams {
 			shardsRes, err := k.svc.ListShardsWithContext(k.ctx, &kinesis.ListShardsInput{
 				StreamName: aws.String(streamID),
+				ShardFilter: &kinesis.ShardFilter{
+					Type: aws.String("AT_LATEST"),
+				},
 			})
 
 			var clientClaims map[string][]awsKinesisClientClaim
