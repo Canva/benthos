@@ -78,6 +78,7 @@ Use the ` + "`batching`" + ` fields to configure an optional [batching policy](/
 			docs.FieldString("rebalance_period", "The period of time between each attempt to rebalance shards across clients.").Advanced(),
 			docs.FieldString("lease_period", "The period of time after which a client that has failed to update a shard checkpoint is assumed to be inactive.").Advanced(),
 			docs.FieldBool("start_from_oldest", "Whether to consume from the oldest message when a sequence does not yet exist for the stream."),
+			docs.FieldBool("list_shards_at_latest", "Whether to only list the shards that are opened"),
 		).WithChildren(session.FieldSpecs()...).
 			WithChildren(policy.FieldSpec()).
 			ChildDefaultAndTypesFromStruct(input.NewAWSKinesisConfig()),
@@ -113,9 +114,10 @@ type kinesisReader struct {
 	svc          kinesisiface.KinesisAPI
 	checkpointer *awsKinesisCheckpointer
 
-	streamShards    map[string][]string
-	balancedStreams []string
-	streamMaxShards map[string]int
+	streamShards       map[string][]string
+	balancedStreams    []string
+	streamMaxShards    map[string]int
+	listShardsAtLatest bool
 
 	commitPeriod    time.Duration
 	leasePeriod     time.Duration
@@ -166,6 +168,8 @@ func newKinesisReader(conf input.AWSKinesisConfig, mgr bundle.NewManagement) (*k
 			return k.backoffCtor()
 		},
 	}
+	// Set the list at latest shards
+	k.listShardsAtLatest = conf.ListShardsAtLatest
 
 	for _, t := range conf.Streams {
 		for _, splitStreams := range strings.Split(t, ",") {
@@ -545,6 +549,33 @@ func isShardFinished(s *kinesis.Shard) bool {
 	return *s.SequenceNumberRange.EndingSequenceNumber != "null"
 }
 
+// Lists all the shards in the stream and iterate through the shards as the API has a limit of 1000 shards per call
+func (k *kinesisReader) getShardsResult(streamID string) (*kinesis.ListShardsOutput, error) {
+	listShardsInput := kinesis.ListShardsInput{
+		StreamName: aws.String(streamID),
+	}
+	if k.listShardsAtLatest {
+		listShardsInput.SetShardFilter(&kinesis.ShardFilter{Type: aws.String("AT_LATEST")})
+	}
+
+	totalShardRes, err := k.svc.ListShardsWithContext(k.ctx, &listShardsInput)
+	if err != nil {
+		return totalShardRes, err
+	}
+	nextToken := totalShardRes.NextToken
+	for nextToken != nil && *nextToken != "" {
+		shardRes, err := k.svc.ListShardsWithContext(k.ctx, &kinesis.ListShardsInput{NextToken: nextToken})
+		if len(shardRes.Shards) > 0 {
+			totalShardRes.SetShards(append(totalShardRes.Shards, shardRes.Shards...))
+		}
+		if err != nil {
+			return totalShardRes, err
+		}
+		nextToken = shardRes.NextToken
+	}
+	return totalShardRes, err
+}
+
 func (k *kinesisReader) runBalancedShards() {
 	var wg sync.WaitGroup
 	defer func() {
@@ -557,10 +588,7 @@ func (k *kinesisReader) runBalancedShards() {
 
 	for {
 		for _, streamID := range k.balancedStreams {
-			shardsRes, err := k.svc.ListShardsWithContext(k.ctx, &kinesis.ListShardsInput{
-				StreamName: aws.String(streamID),
-			})
-
+			shardsRes, err := k.getShardsResult(streamID)
 			var clientClaims map[string][]awsKinesisClientClaim
 			if err == nil {
 				clientClaims, err = k.checkpointer.AllClaims(k.ctx, streamID)
