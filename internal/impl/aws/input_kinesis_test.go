@@ -46,12 +46,12 @@ type mockKinesisReader struct {
 	kinesisiface.KinesisAPI
 }
 
-func (m *mockKinesisReader) GetShardIteratorWithContext(aws.Context, *kinesis.GetShardIteratorInput, ...request.Option) (*kinesis.GetShardIteratorOutput, error) {
+func (m mockKinesisReader) GetShardIteratorWithContext(aws.Context, *kinesis.GetShardIteratorInput, ...request.Option) (*kinesis.GetShardIteratorOutput, error) {
 	shardId := "2"
 	return &kinesis.GetShardIteratorOutput{ShardIterator: &shardId}, nil
 }
 
-func (m *mockKinesisReader) GetRecordsWithContext(aws.Context, *kinesis.GetRecordsInput, ...request.Option) (*kinesis.GetRecordsOutput, error) {
+func (m mockKinesisReader) GetRecordsWithContext(aws.Context, *kinesis.GetRecordsInput, ...request.Option) (*kinesis.GetRecordsOutput, error) {
 	milisecondsBehind := int64(0)
 	return &kinesis.GetRecordsOutput{
 		ChildShards:        []*kinesis.ChildShard{},
@@ -61,18 +61,26 @@ func (m *mockKinesisReader) GetRecordsWithContext(aws.Context, *kinesis.GetRecor
 	}, nil
 }
 
+func (m mockKinesisReader) ListShardsWithContext(aws.Context, *kinesis.ListShardsInput, ...request.Option) (*kinesis.ListShardsOutput, error) {
+	shardId := "ShardId-11011"
+	shards := kinesis.ListShardsOutput{}
+	shards.SetShards(append(shards.Shards, &kinesis.Shard{ShardId: &shardId}))
+	return &shards, nil
+}
+
 func NewAwsTestConfig(streams []string, streamsMaxShard []string) input.AWSKinesisConfig {
 	return input.AWSKinesisConfig{
-		Config:          session.NewConfig(),
-		Streams:         streams,
-		StreamsMaxShard: streamsMaxShard,
-		DynamoDB:        input.NewDynamoDBCheckpointConfig(),
-		CheckpointLimit: 1024,
-		CommitPeriod:    "5s",
-		LeasePeriod:     "30s",
-		RebalancePeriod: "30s",
-		StartFromOldest: true,
-		Batching:        batchconfig.NewConfig(),
+		Config:             session.NewConfig(),
+		Streams:            streams,
+		StreamsMaxShard:    streamsMaxShard,
+		DynamoDB:           input.NewDynamoDBCheckpointConfig(),
+		CheckpointLimit:    1024,
+		CommitPeriod:       "5s",
+		LeasePeriod:        "30s",
+		RebalancePeriod:    "30s",
+		StartFromOldest:    true,
+		ListShardsAtLatest: false,
+		Batching:           batchconfig.NewConfig(),
 	}
 }
 
@@ -92,6 +100,17 @@ func TestNewKinesisBalancedReaderMaxShardConfig(t *testing.T) {
 	assert.Equal(t, 2, len(kinesisReader.streamMaxShards))
 	assert.Equal(t, 5, kinesisReader.streamMaxShards["test-kds-1"])
 	assert.Equal(t, 10, kinesisReader.streamMaxShards["test-kds-2"])
+}
+
+func TestGetShardsResult(t *testing.T) {
+	config := input.NewAWSKinesisConfig()
+	kinesisReader, err := newKinesisReader(config, mock.NewManager())
+	require.NoError(t, err)
+	kinesisReader.svc = mockKinesisReader{}
+
+	res, err := kinesisReader.getShardsResult("test-kds-1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(res.Shards))
 }
 
 func TestRunMaxShardConfigBalancedShards(t *testing.T) {
