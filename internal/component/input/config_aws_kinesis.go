@@ -29,30 +29,32 @@ func NewDynamoDBCheckpointConfig() DynamoDBCheckpointConfig {
 
 // AWSKinesisConfig is configuration values for the input type.
 type AWSKinesisConfig struct {
-	session.Config  `json:",inline" yaml:",inline"`
-	Streams         []string                 `json:"streams" yaml:"streams"`
-	StreamsMaxShard []string                 `json:"streams_max_shard" yaml:"streams_max_shard"`
-	DynamoDB        DynamoDBCheckpointConfig `json:"dynamodb" yaml:"dynamodb"`
-	CheckpointLimit int                      `json:"checkpoint_limit" yaml:"checkpoint_limit"`
-	CommitPeriod    string                   `json:"commit_period" yaml:"commit_period"`
-	LeasePeriod     string                   `json:"lease_period" yaml:"lease_period"`
-	RebalancePeriod string                   `json:"rebalance_period" yaml:"rebalance_period"`
-	StartFromOldest bool                     `json:"start_from_oldest" yaml:"start_from_oldest"`
-	Batching        batchconfig.Config       `json:"batching" yaml:"batching"`
+	session.Config     `json:",inline" yaml:",inline"`
+	Streams            []string                 `json:"streams" yaml:"streams"`
+	StreamsMaxShard    []string                 `json:"streams_max_shard" yaml:"streams_max_shard"`
+	DynamoDB           DynamoDBCheckpointConfig `json:"dynamodb" yaml:"dynamodb"`
+	CheckpointLimit    int                      `json:"checkpoint_limit" yaml:"checkpoint_limit"`
+	CommitPeriod       string                   `json:"commit_period" yaml:"commit_period"`
+	LeasePeriod        string                   `json:"lease_period" yaml:"lease_period"`
+	RebalancePeriod    string                   `json:"rebalance_period" yaml:"rebalance_period"`
+	StartFromOldest    bool                     `json:"start_from_oldest" yaml:"start_from_oldest"`
+	ListShardsAtLatest bool                     `json:"list_shards_at_latest" yaml:"list_shards_at_latest"`
+	Batching           batchconfig.Config       `json:"batching" yaml:"batching"`
 }
 
 // NewAWSKinesisConfig creates a new Config with default values.
 func NewAWSKinesisConfig() AWSKinesisConfig {
 	return AWSKinesisConfig{
-		Config:          session.NewConfig(),
-		Streams:         []string{},
-		StreamsMaxShard: []string{},
-		DynamoDB:        NewDynamoDBCheckpointConfig(),
-		CheckpointLimit: 1024,
-		CommitPeriod:    "5s",
-		LeasePeriod:     "30s",
-		RebalancePeriod: "30s",
-		StartFromOldest: true,
-		Batching:        batchconfig.NewConfig(),
+		Config:             session.NewConfig(),
+		Streams:            []string{},
+		StreamsMaxShard:    []string{},
+		DynamoDB:           NewDynamoDBCheckpointConfig(),
+		CheckpointLimit:    1024,
+		CommitPeriod:       "5s",
+		LeasePeriod:        "30s",
+		RebalancePeriod:    "30s",
+		StartFromOldest:    true,
+		ListShardsAtLatest: false,
+		Batching:           batchconfig.NewConfig(),
 	}
 }
