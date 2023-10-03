@@ -563,7 +563,7 @@ func (k *kinesisReader) getShardsResult(streamID string) (*kinesis.ListShardsOut
 		return totalShardRes, err
 	}
 	nextToken := totalShardRes.NextToken
-	for nextToken != nil && *nextToken != "" {
+	for aws.StringValue(nextToken) != "" {
 		shardRes, err := k.svc.ListShardsWithContext(k.ctx, &kinesis.ListShardsInput{NextToken: nextToken})
 		if len(shardRes.Shards) > 0 {
 			totalShardRes.SetShards(append(totalShardRes.Shards, shardRes.Shards...))
