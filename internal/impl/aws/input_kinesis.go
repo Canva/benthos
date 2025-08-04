@@ -587,7 +587,7 @@ func (k *kinesisReader) runBalancedShards() {
 	}()
 
 	// Create a gauge metric for shard status
-	metricKVectorShardStatus := k.mgr.Metrics().GetGaugeVec("kinesis_shard_status", "stream", "shard_id", "status")
+	metricKVectorShardStatus := k.mgr.Metrics().GetGaugeVec("kinesis_shard_opened", "stream", "shard_id")
 
 	for {
 		for _, streamID := range k.balancedStreams {
@@ -609,9 +609,9 @@ func (k *kinesisReader) runBalancedShards() {
 			for _, s := range shardsRes.Shards {
 				// Update metric for each shard
 				if isShardFinished(s) {
-					metricKVectorShardStatus.With(streamID, *s.ShardId, "finished").Set(1)
+					metricKVectorShardStatus.With(streamID, *s.ShardId).Set(0)
 				} else {
-					metricKVectorShardStatus.With(streamID, *s.ShardId, "open").Set(1)
+					metricKVectorShardStatus.With(streamID, *s.ShardId).Set(1)
 					unclaimedShards[*s.ShardId] = ""
 				}
 			}
