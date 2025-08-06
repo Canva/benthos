@@ -587,7 +587,7 @@ func (k *kinesisReader) runBalancedShards() {
 	}()
 
 	// Create a gauge metric for shard status
-	metricKVectorShardStatus := k.mgr.Metrics().GetGaugeVec("kinesis_shard_opened", "stream", "shard_id")
+	metricKVectorShardStatus := k.mgr.Metrics().GetGaugeVec("kinesis_shard_opened", "stream", "shardId")
 
 	for {
 		for _, streamID := range k.balancedStreams {
