@@ -56,14 +56,14 @@ require (
 	github.com/itchyny/timefmt-go v0.1.5
 	github.com/jhump/protoreflect v1.15.6
 	github.com/jmespath/go-jmespath v0.4.0
-	github.com/klauspost/compress v1.16.3
+	github.com/klauspost/compress v1.16.7
 	github.com/lib/pq v1.10.4
 	github.com/linkedin/goavro/v2 v2.12.0
 	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/microcosm-cc/bluemonday v1.0.22
 	github.com/mitchellh/mapstructure v1.4.3
-	github.com/nats-io/nats.go v1.23.0
-	github.com/nats-io/nkeys v0.3.0
+	github.com/nats-io/nats.go v1.28.0
+	github.com/nats-io/nkeys v0.4.4
 	github.com/nats-io/stan.go v0.10.2
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/nsqio/go-nsq v1.1.0
@@ -237,7 +237,7 @@ require (
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
-	github.com/nats-io/nats-server/v2 v2.8.4 // indirect
+	github.com/nats-io/nats-server/v2 v2.9.23 // indirect
 	github.com/nats-io/nats-streaming-server v0.24.6 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
